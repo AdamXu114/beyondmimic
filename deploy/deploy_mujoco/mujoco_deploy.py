@@ -201,6 +201,7 @@ if __name__ == "__main__":
     print(f"[INFO] 动作维度: {num_actions}, 观测维度: {num_obs}")
     print(f"[INFO] Kp: {kps}, \r[INFO] Kd: {kds},\r[INFO] 默认角度: {default_angles_mj},\r[INFO] 力矩限制: {tau_limit}")
 
+    d.qpos[3:7] = [0,0,0,1]
     # reset to initial pose
     sim_counter = 0
     counter_step = 0
@@ -215,12 +216,12 @@ if __name__ == "__main__":
     print("[INFO] 运行初始策略推理...")
     outputs_result = policy.run(None, observation)
     # 处理多个输出
-    action, ref_joint_pos, ref_joint_vel, _, ref_body_quat_w, _, _ = outputs_result
-    # action, _, _, _, _, _, _ = outputs_result
-    # # 修改你的代码如下：
-    # ref_joint_pos = np.expand_dims(motion_joint_pos[counter_step, :], axis=0)
-    # ref_joint_vel = np.expand_dims(motion_joint_vel[counter_step, :], axis=0)
-    # ref_body_quat_w = np.expand_dims(motion_body_quat_w[counter_step, :, :], axis=0)
+    # action, ref_joint_pos, ref_joint_vel, _, ref_body_quat_w, _, _ = outputs_result
+    action, _, _, _, _, _, _ = outputs_result
+    # 修改你的代码如下：
+    ref_joint_pos = np.expand_dims(motion_joint_pos[counter_step, :], axis=0)
+    ref_joint_vel = np.expand_dims(motion_joint_vel[counter_step, :], axis=0)
+    ref_body_quat_w = np.expand_dims(motion_body_quat_w[counter_step, :, :], axis=0)
     print(f"[DEBUG] 参考动作形状: {ref_joint_pos.shape}, 参考身体四元数形状: {ref_body_quat_w.shape}")
     print(f"[INFO] 初始动作生成: {action.shape}")
 
@@ -243,7 +244,7 @@ if __name__ == "__main__":
             tau = pd_control(target_dof_pos_mj, d.qpos[7:], kps,
                              np.zeros_like(kds), d.qvel[6:], kds)
             # tau = np.clip(tau, -200, 200)
-            d.ctrl[:] = tau
+            # d.ctrl[:] = tau
             mujoco.mj_step(m, d)
 
             sim_counter += 1
@@ -270,8 +271,8 @@ if __name__ == "__main__":
                 temp1 = quat_mul(quat_roll, quat_pitch)
                 temp2 = quat_mul(quat_yaw, temp1)
                 robot_quat = quat_mul(pelvis_quat_w, temp2)
-                ref_anchor_ori_w = ref_body_quat_w[:, 7].squeeze(0)
-                # ref_anchor_ori_w = ref_body_quat_w[:, 9].squeeze(0)
+                # ref_anchor_ori_w = ref_body_quat_w[:, 7].squeeze(0)
+                ref_anchor_ori_w = ref_body_quat_w[:, 9].squeeze(0)
 
                 if counter_step < 1:
                     init_to_anchor = matrix_from_quat(yaw_quat(ref_anchor_ori_w))
@@ -300,17 +301,21 @@ if __name__ == "__main__":
                 observation[input_name[1]] = np.array([[counter_step]], dtype=np.float32)
                 outputs_result = policy.run(None, observation)
 
-                action, ref_joint_pos, ref_joint_vel, _, ref_body_quat_w, _, _ = outputs_result
-                # action, _, _, _, _, _, _ = outputs_result
-                # ref_joint_pos = np.expand_dims(motion_joint_pos[counter_step, :], axis=0)
-                # ref_joint_vel = np.expand_dims(motion_joint_vel[counter_step, :], axis=0)
-                # ref_body_quat_w = np.expand_dims(motion_body_quat_w[counter_step, :, :], axis=0)
+                # action, ref_joint_pos, ref_joint_vel, _, ref_body_quat_w, _, _ = outputs_result
+                action, _, _, _, _, _, _ = outputs_result
+                ref_joint_pos = np.expand_dims(motion_joint_pos[counter_step, :], axis=0)
+                ref_joint_vel = np.expand_dims(motion_joint_vel[counter_step, :], axis=0)
+                ref_body_quat_w = np.expand_dims(motion_body_quat_w[counter_step, :, :], axis=0)
                 print(f"[DEBUG] 参考动作形状: {ref_joint_pos.shape}, 参考身体四元数形状: {ref_body_quat_w.shape}")
-
+                print(ref_joint_pos,"wwwwwwwwwwwww")
                 # print("Action:", action)
                 target_dof_pos_lab = action * action_scale_lab + default_angles_lab
                 target_dof_pos_mj[mj2lab] = target_dof_pos_lab.squeeze(0)
-                counter_step += 1
+                print("target_dof_pos_mj:", target_dof_pos_mj)
+                # counter_step += 1
+                counter_step = 1
+                if counter_step >= 600:
+                    counter_step = 600
 
             viewer.render()
 

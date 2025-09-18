@@ -328,9 +328,9 @@ class Controller:
         if self.timestep < 1:
             init_to_anchor = matrix_from_quat(yaw_quat(ref_anchor_ori_w))
             world_to_anchor = matrix_from_quat(yaw_quat(robot_quat))
-            init_to_world = world_to_anchor @ init_to_anchor.T
+            self.init_to_world = world_to_anchor @ init_to_anchor.T
 
-        motion_anchor_ori_b = matrix_from_quat(robot_quat).T @ init_to_world @ matrix_from_quat(
+        motion_anchor_ori_b = matrix_from_quat(robot_quat).T @ self.init_to_world @ matrix_from_quat(
             ref_anchor_ori_w)
         
         offset = 0
@@ -363,8 +363,10 @@ class Controller:
         self.action = action.copy()
         self.action_buffer = action.copy()
         # transform action to target_dof_pos
-        target_dof_pos = self.config.default_angles_seq + self.action * self.config.action_scale_seq
-        target_dof_pos[self.config.real2lab] = target_dof_pos.reshape(-1)   # xml idx
+        target_dof_pos_lab = self.config.default_angles_seq + self.action * self.config.action_scale_seq
+        target_dof_pos_lab = target_dof_pos_lab.reshape(-1)
+        target_dof_pos = np.zeros_like(target_dof_pos_lab)
+        target_dof_pos[self.config.real2lab] = target_dof_pos_lab   # xml idx
         # target_dof_pos = target_dof_pos.reshape(-1,)
         # target_dof_pos = np.array([target_dof_pos[joint_seq.index(joint)] for joint in joint_xml])
         self.timestep += 1
